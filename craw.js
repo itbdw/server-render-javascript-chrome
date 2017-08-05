@@ -8,7 +8,7 @@ const args = process.argv;
 var url='https://itbdw.com';
 var ua = '';
 var port = 9222;
-var blocked_pattens = ["*.mp4", "*.webm", "*.woff", "*iconfont*", "*fonts*"];
+var blocked_pattens = ["*.mp4", "*.webm"];
 var requestId = '';
 
 url = args[2] ? args[2] : url;
