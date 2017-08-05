@@ -17,17 +17,20 @@ app.get('/*', function(req, res){
     // 预渲染后的页面字符串容器
     var content = '';
 
-    // 开启一个子进程，启动 chrome ，todo 端口号随机
+    // 开启一个子进程，启动 chrome todo 每次请求启动进程改为设计一个进程池
     get_port().then(chrome_port => {
 
+        // 不要用 Ubuntu默认的 chromium 很慢
         // var chrome_path="google-chrome-stable";
         // var chrome_path="/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome";
-        //todo 每次打开浏览器改为从池子中获取可用的
+
         var chrome_path="chrome";
+
         var chrome = child_process.spawn(chrome_path, ['--headless', '--disable-gpu', '--remote-debugging-port='+chrome_port, '--blink-settings=imagesEnabled=false']);
 
         console.log('chrome started at port:' + chrome_port);
 
+        //todo 需要保证 chrome 已经正常启动再开启进程
         // 再开启一个子进程，监听 chrome
         var craw = child_process.spawn('node', ['craw.js', url, ua, chrome_port]);
 

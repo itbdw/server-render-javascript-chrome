@@ -5,9 +5,9 @@ Prerender your javascript web page for better seo with Google Chrome.
 
  Must 
 
-`chrome`, serve as a headless browser.
+`Chrome`
 
-`NodeJS`, proxy request.
+`NodeJS`
 
 Suggested
 
