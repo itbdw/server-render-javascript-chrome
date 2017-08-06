@@ -121,13 +121,11 @@ You should get two line in nginx access log, one is your request with user-agent
 your upstream server with user-agent `ServerRenderJavascript`, if you have not change the default user-agent at craw.js.
 
 
-## todo
-
-* make a pool to choose other than start chrome for every request
+## Todo
 
 * before call craw.js, make sure chrome was started already (no pending)
 
-* bug, when the documentUrl was blocked, it just hang out there 
+* bug, when the documentUrl was blocked by rule, it just hang out there, specify a timeout
 
 ## What and how it works
 
