@@ -17,18 +17,23 @@ app.get('/*', function (req, res) {
     // 预渲染后的页面字符串容器
     var content = '';
 
-    // 开启一个子进程，启动 chrome todo 每次请求启动进程改为设计一个进程池
-    get_port().then(chrome_port => {
+    // 开启一个子进程，启动 chrome
+    get_port().then(function (chrome_port) {
 
-        // 不要用 Ubuntu默认的 chromium 很慢
-        // var chrome_path="google-chrome-stable";
-        // var chrome_path="/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome";
+        // 不要用 Ubuntu 默认的 chromium, 很慢
 
         var chrome_path="chrome";
 
+        // var chrome_path="google-chrome-stable";
+        // var chrome_path="/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome";
+
         var chrome = child_process.spawn(chrome_path, ['--headless', '--disable-gpu', '--remote-debugging-port=' + chrome_port, '--blink-settings=imagesEnabled=false']);
 
-        console.log('started chrome instance with port:' + chrome_port);
+        chrome.stderr.on('data', function (data) {
+            console.error('chrome error: '  + url + " " + data.toString());
+        });
+
+        console.log('start chrome instance with port:' + chrome_port);
 
         //todo 需要保证 chrome 已经正常启动再开启进程
         // 再开启一个子进程，监听 chrome
@@ -43,40 +48,36 @@ app.get('/*', function (req, res) {
         });
 
         craw.stderr.on('data', function (data) {
-            console.error('stderr: ' + url + "\n" + data.toString());
+            console.error('craw error: ' + url + " " + data.toString());
         });
 
-        craw.on('uncaughtException', function (err) {
-            console.error((err && err.stack) ? err.stack : err);
-
-            chrome.kill();
-            console.log('killed chrome instance when exception found with port:' + chrome_port);
-
-            res.statusCode = 503;
-            res.send('Error');
+        craw.on('close', function (code)  {
+            if (code != 0) {
+                console.log(`craw process exited with code ${code}`);
+            }
         });
 
         // 监听子进程退出事件
         craw.on('exit', function (code) {
 
             chrome.kill();
-            console.log('killed chrome instance normally with port:' + chrome_port);
+            console.log('kill chrome instance normally with port:' + chrome_port);
 
             switch (code) {
                 case 1:
                     console.log('加载失败: ' + url);
                     res.statusCode = 502;
-                    res.send('加载失败');
+                    res.send( content ? content : '加载失败');
                     break;
                 case 2:
-                    console.log('加载超时: ' + url);
-                    res.statusCode = 504;
-                    res.send(content);
+                    console.log('访问失败: ' + url);
+                    res.statusCode = 503;
+                    res.send( content ? content : '服务器内部错误');
                     break;
                 case 3:
                     console.log('禁止访问: ' + url);
                     res.statusCode = 403;
-                    res.send(content);
+                    res.send( content ? content : '禁止访问');
                     break;
                 default:
 
@@ -101,9 +102,19 @@ app.get('/*', function (req, res) {
                     content_split.shift();
 
                     if (redirectUrl) {
-                        res.header("Location", redirectUrl);
-                        res.send("redirect to " + redirectUrl + "\n");
-                        return;
+
+                        try {
+                            res.header("Location", redirectUrl);
+                            res.send("redirect to " + redirectUrl + "\n");
+                            return;
+                        } catch (e) {
+                            console.error(e);
+                            console.log('加载失败: ' + url);
+                            res.statusCode = 502;
+                            res.header("Content-Type", "text/html");
+                            res.send( content ? content : '加载失败');
+                            return;
+                        }
                     }
 
                     content = content_split.join("\n");
@@ -114,11 +125,19 @@ app.get('/*', function (req, res) {
         });
 
     });
+
+    //     need res.send on error
+
+    // process.on("uncaughtException", function (err) {
+    //     console.error('Error caught in uncaughtException event:', err);
+    //
+    // })
+
 });
 
 port = process.env.PORT || 3000;
 
 app.listen(port, function () {
-    console.log('server-render-javascript app start listening on port ' + port + '!');
+    console.log('server-render-javascript-chrome start listening on port ' + port);
 });
 

@@ -1,14 +1,14 @@
 // 
 //node craw.js url base64ua port
 
+// 使用 process.exit 会导致直接中断，不会输出 buffer
+//https://nodejs.org/api/process.html#process_process_exit_code
+
 const CDP = require('chrome-remote-interface');
 const base64 = require('base-64');
 const args = process.argv;
 
 var url='https://itbdw.com';
-
-//for debug Network.getResponseBody truncated
-url = 'https://cdn.bootcss.com/jquery/3.2.1/jquery.min.js';
 
 var ua = '';
 var port = 9222;
@@ -29,7 +29,7 @@ userAgent = ua + ' ' + 'ServerRenderJavascript';
 
 var head = {};
 
-CDP({port:port}, (client) => {
+CDP({port:port}, function(client) {
     // extract domains
     const {Network, Page, Runtime, DOM} = client;
 
@@ -37,8 +37,7 @@ CDP({port:port}, (client) => {
     Network.setBlockedURLs({urls: blocked_pattens});
 
     // setup handlers
-    Network.requestWillBeSent((params) => {
-
+    Network.requestWillBeSent(function(params) {
         if (params.documentURL == url || params.documentURL == (url + '/')) {
 
             requestId = params.requestId;
@@ -64,7 +63,7 @@ CDP({port:port}, (client) => {
         }
     });
 
-    Network.responseReceived((params) => {
+    Network.responseReceived(function(params) {
 
         if (params.response.url == url || params.response.url == url + '/' ) {
             head = {
@@ -73,15 +72,21 @@ CDP({port:port}, (client) => {
                 "content-type":params.response.mimeType,
                 "location":""
             };
-       }
+
+            if (head['content-type'] == 'application/octet-stream') {
+                process.exitCode = 1;
+                console.log("Not Support For Downloadable Files: " + url);
+                client.close();
+            }
+        }
 
     });
 
-    Page.loadEventFired(() => {
+    Page.loadEventFired(function() {
         if (!head['status']) {
             console.error('no status code return! ' + url);
             client.close();
-            process.exit(1);
+            process.exitCode = 1;
         }
 
         console.log(head['status']);
@@ -89,24 +94,18 @@ CDP({port:port}, (client) => {
         console.log(head['location']);
 
         if (head['content-type'].indexOf('html') > -1) {
-              Runtime.evaluate({expression: 'document.documentElement.outerHTML'}).then((result) => {
+              Runtime.evaluate({expression: 'document.documentElement.outerHTML'}).then(function(result) {
                   console.log(result.result.value);
                   client.close();
-                  process.exit(0);
              });
         } else {
             // safe enough to fetch response body
-            Network.getResponseBody({requestId: requestId}, (err, response) => {
+            Network.getResponseBody({requestId: requestId}, function(err, response) {
                 if (err) {
                     console.error('failed fetch response body');
                     client.close();
-                    process.exit(1);
+                    process.exitCode = 1;
                 } else {
-                    //bug, data truncated
-                    // have no idea where the truncation was made
-                    // https://github.com/cyrus-and/chrome-remote-interface
-                    // https://github.com/ChromeDevTools/devtools-protocol
-
                     if (response.base64Encoded) {
                         console.log(base64.decode(response.body));
                     } else {
@@ -114,10 +113,16 @@ CDP({port:port}, (client) => {
                     }
 
                     client.close();
-                    process.exit(0);
                 }
             })
         }
+    });
+
+    Network.responseReceived(function(params) {
+        // console.log(params);
+    });
+    Network.loadingFinished(function(params) {
+        // console.log(params);
     });
 
     // enable events then start!
@@ -125,18 +130,18 @@ CDP({port:port}, (client) => {
         Network.enable(),
         Page.enable()
 
-    ]).then(() => {
+    ]).then(function() {
         return Page.navigate({url: url});
-    }).catch((err) => {
+    }).catch(function(err) {
         console.error(err);
         client.close();
-        process.exit(1);
+        process.exitCode = 1;
     });
 
-}).on('error', (err) => {
+}).on('error', function(err) {
     // cannot connect to the remote endpoint
     console.error(err);
-    process.exit(2);
+    process.exitCode = 2;
 });
 
 
