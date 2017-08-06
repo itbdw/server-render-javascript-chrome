@@ -33,6 +33,9 @@ wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 dpkg -i google-chrome-stable_current_amd64.deb
 apt-get install -f
 ln -s /usr/bin/google-chrome-stable /usr/bin/chrome
+
+apt install libosmesa6
+ln -s /usr/lib/x86_64-linux-gnu/libOSMesa.so.6 /opt/google/chrome/libosmesa.so
 ```
 
 3. Install and Run
