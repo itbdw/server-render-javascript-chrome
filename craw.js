@@ -2,10 +2,14 @@
 //node craw.js url base64ua port
 
 const CDP = require('chrome-remote-interface');
+const base64 = require('base-64');
 const args = process.argv;
 
-
 var url='https://itbdw.com';
+
+//for debug Network.getResponseBody truncated
+url = 'https://cdn.bootcss.com/jquery/3.2.1/jquery.min.js';
+
 var ua = '';
 var port = 9222;
 var blocked_pattens = ["*.mp4", "*.webm"];
@@ -14,7 +18,7 @@ var requestId = '';
 url = args[2] ? args[2] : url;
 
 if (args[3]) {
-    ua = require('base-64').decode(args[3]);
+    ua = base64.decode(args[3]);
 }
 
 if (args[4]) {
@@ -89,19 +93,30 @@ CDP({port:port}, (client) => {
                   console.log(result.result.value);
                   client.close();
                   process.exit(0);
-             });            
+             });
         } else {
+            // safe enough to fetch response body
             Network.getResponseBody({requestId: requestId}, (err, response) => {
                 if (err) {
                     console.error('failed fetch response body');
-                    client.close();   
+                    client.close();
                     process.exit(1);
                 } else {
-                    console.log(response.body);
-                    client.close();   
+                    //bug, data truncated
+                    // have no idea where the truncation was made
+                    // https://github.com/cyrus-and/chrome-remote-interface
+                    // https://github.com/ChromeDevTools/devtools-protocol
+
+                    if (response.base64Encoded) {
+                        console.log(base64.decode(response.body));
+                    } else {
+                        console.log(response.body);
+                    }
+
+                    client.close();
                     process.exit(0);
                 }
-            });
+            })
         }
     });
 
