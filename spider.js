@@ -22,9 +22,9 @@ app.get('/*', function (req, res) {
 
         // 不要用 Ubuntu默认的 chromium 很慢
         // var chrome_path="google-chrome-stable";
-        var chrome_path="/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome";
+        // var chrome_path="/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome";
 
-        // var chrome_path="chrome";
+        var chrome_path="chrome";
 
         var chrome = child_process.spawn(chrome_path, ['--headless', '--disable-gpu', '--remote-debugging-port=' + chrome_port, '--blink-settings=imagesEnabled=false']);
 
