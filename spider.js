@@ -7,10 +7,10 @@ var app = express();
 
 app.enable('trust proxy');
 
-app.get('/*', function(req, res){
+app.get('/*', function (req, res) {
 
     // 完整URL
-    var url = req.protocol + '://'+ req.hostname + req.originalUrl;
+    var url = req.protocol + '://' + req.hostname + req.originalUrl;
 
     var ua = base64.encode(req.headers['user-agent']);
 
@@ -26,9 +26,9 @@ app.get('/*', function(req, res){
 
         var chrome_path="chrome";
 
-        var chrome = child_process.spawn(chrome_path, ['--headless', '--disable-gpu', '--remote-debugging-port='+chrome_port, '--blink-settings=imagesEnabled=false']);
+        var chrome = child_process.spawn(chrome_path, ['--headless', '--disable-gpu', '--remote-debugging-port=' + chrome_port, '--blink-settings=imagesEnabled=false']);
 
-        console.log('chrome started at port:' + chrome_port);
+        console.log('started chrome instance with port:' + chrome_port);
 
         //todo 需要保证 chrome 已经正常启动再开启进程
         // 再开启一个子进程，监听 chrome
@@ -38,36 +38,43 @@ app.get('/*', function(req, res){
         craw.stdout.setEncoding('utf8');
 
         // 监听的stdout，并拼接起来
-        craw.stdout.on('data', function(data){
+        craw.stdout.on('data', function (data) {
             content += data.toString();
         });
 
-        craw.stderr.on('data', function(data){
+        craw.stderr.on('data', function (data) {
             console.error('stderr: ' + url + "\n" + data.toString());
         });
 
-        craw.on('uncaughtException', function(err) {
+        craw.on('uncaughtException', function (err) {
             console.error((err && err.stack) ? err.stack : err);
+
+            chrome.kill();
+            console.log('killed chrome instance when exception found with port:' + chrome_port);
+
             res.statusCode = 503;
             res.send('Error');
         });
 
         // 监听子进程退出事件
-        craw.on('exit', function(code){
+        craw.on('exit', function (code) {
 
-            switch (code){
+            chrome.kill();
+            console.log('killed chrome instance normally with port:' + chrome_port);
+
+            switch (code) {
                 case 1:
-                    console.log('加载失败: '+url);
+                    console.log('加载失败: ' + url);
                     res.statusCode = 502;
                     res.send('加载失败');
                     break;
                 case 2:
-                    console.log('加载超时: '+ url);
+                    console.log('加载超时: ' + url);
                     res.statusCode = 504;
                     res.send(content);
                     break;
                 case 3:
-                    console.log('禁止访问: '+ url);
+                    console.log('禁止访问: ' + url);
                     res.statusCode = 403;
                     res.send(content);
                     break;
@@ -76,7 +83,7 @@ app.get('/*', function(req, res){
                     var content_split = content.split("\n");
 
                     if (content_split[0] === '' || content_split[0] === undefined) {
-                        console.error('执行异常，没有获取到状态码: '+ url);
+                        console.error('执行异常，没有获取到状态码: ' + url);
                         res.statusCode = 503;
                         res.send(content);
                         return;
@@ -104,8 +111,6 @@ app.get('/*', function(req, res){
                     res.send(content);
                     break;
             }
-
-            chrome.kill();
         });
 
     });

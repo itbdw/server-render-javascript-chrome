@@ -62,14 +62,14 @@ CDP({port:port}, (client) => {
 
     Network.responseReceived((params) => {
 
-    	if (params.response.url == url || params.response.url == url + '/' ) {
-        	head = {
+        if (params.response.url == url || params.response.url == url + '/' ) {
+            head = {
                 "url":params.response.url,
-        		"status":params.response.status,
-        		"content-type":params.response.mimeType,
+                "status":params.response.status,
+                "content-type":params.response.mimeType,
                 "location":""
-        	};
-	   }
+            };
+       }
 
     });
 

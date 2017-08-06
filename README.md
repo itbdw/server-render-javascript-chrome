@@ -127,6 +127,8 @@ your upstream server with user-agent `ServerRenderJavascript`, if you have not c
 
 * before call craw.js, make sure chrome was started already (no pending)
 
+* bug, when the documentUrl was blocked, it just hang out there 
+
 ## What and how it works
 
 Your website is rendered with javascript. But search engine (like Baidu, Sogou, 360) does not like the page, and `even` can not understand javascript content totally.
