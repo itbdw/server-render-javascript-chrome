@@ -121,12 +121,6 @@ You should get two line in nginx access log, one is your request with user-agent
 your upstream server with user-agent `ServerRenderJavascript`, if you have not change the default user-agent at craw.js.
 
 
-## Todo
-
-* before call craw.js, make sure chrome was started already (no pending)
-
-* bug, when the documentUrl was blocked by rule, it just hang out there, specify a timeout
-
 ## What and how it works
 
 Your website is rendered with javascript. But search engine (like Baidu, Sogou, 360) does not like the page, and `even` can not understand javascript content totally.
