@@ -84,7 +84,8 @@ CDP({port:port}, function(client) {
 
     Page.loadEventFired(function() {
         if (!head['status']) {
-            console.error('no status code return! ' + url);
+            
+            console.error(formatDateTime() + ' ' + 'no status code return! ' + url);
             client.close();
             process.exitCode = 1;
         }
@@ -102,7 +103,7 @@ CDP({port:port}, function(client) {
             // safe enough to fetch response body
             Network.getResponseBody({requestId: requestId}, function(err, response) {
                 if (err) {
-                    console.error('failed fetch response body');
+                    console.error(formatDateTime() + ' ' + 'failed fetch response body');
                     client.close();
                     process.exitCode = 1;
                 } else {
@@ -133,17 +134,36 @@ CDP({port:port}, function(client) {
     ]).then(function() {
         return Page.navigate({url: url});
     }).catch(function(err) {
-        console.error(err);
+        console.error(formatDateTime() + ' ' + err);
         client.close();
         process.exitCode = 1;
     });
 
 }).on('error', function(err) {
     // cannot connect to the remote endpoint
-    console.error(err);
+    console.error(formatDateTime() + ' ' + err);
     process.exitCode = 2;
 });
 
+function formatDateTime(inputTime) {
+    if (inputTime) {
+        var date = new Date(inputTime);
+    } else {
+        var date = new Date();
+    }
 
+    var y = date.getFullYear();
+    var m = date.getMonth() + 1;
+    m = m < 10 ? ('0' + m) : m;
+    var d = date.getDate();
+    d = d < 10 ? ('0' + d) : d;
+    var h = date.getHours();
+    h = h < 10 ? ('0' + h) : h;
+    var minute = date.getMinutes();
+    var second = date.getSeconds();
+    minute = minute < 10 ? ('0' + minute) : minute;
+    second = second < 10 ? ('0' + second) : second;
+    return y + '-' + m + '-' + d+' '+h+':'+minute+':'+second;
+};
 
 
