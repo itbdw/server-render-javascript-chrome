@@ -8,7 +8,7 @@ const CDP = require('chrome-remote-interface');
 const base64 = require('base-64');
 const args = process.argv;
 
-var url='https://itbdw.com';
+var url = 'https://itbdw.com';
 
 var ua = '';
 var port = 9222;
@@ -48,14 +48,14 @@ function formatDateTime(inputTime) {
     minute = minute < 10 ? ('0' + minute) : minute;
     second = second < 10 ? ('0' + second) : second;
 
-    return y + '-' + m + '-' + d+' '+h+':'+minute+':'+second+'.'+ms;
+    return y + '-' + m + '-' + d + ' ' + h + ':' + minute + ':' + second + '.' + ms;
 };
 
-CDP({port:port}, client => {
+CDP({port: port}, client => {
     // extract domains
     const {Network, Page, Runtime, DOM} = client;
 
-    Network.setUserAgentOverride({userAgent:userAgent});
+    Network.setUserAgentOverride({userAgent: userAgent});
 
     //does not support Network.setBlockedURLs() for process just hanging out there,
     // seems there is no method for listen it
@@ -76,9 +76,9 @@ CDP({port:port}, client => {
 
                 head = {
                     "url": params.documentURL,
-                    "status":params.redirectResponse.status,
-                    "content-type":params.redirectResponse.mimeType,
-                    "location":headers['location']
+                    "status": params.redirectResponse.status,
+                    "content-type": params.redirectResponse.mimeType,
+                    "location": headers['location']
                 };
 
                 //if redirect, not more data
@@ -89,12 +89,12 @@ CDP({port:port}, client => {
 
     Network.responseReceived((params) => {
 
-        if (params.response.url == url || params.response.url == url + '/' ) {
+        if (params.response.url == url || params.response.url == url + '/') {
             head = {
-                "url":params.response.url,
-                "status":params.response.status,
-                "content-type":params.response.mimeType,
-                "location":""
+                "url": params.response.url,
+                "status": params.response.status,
+                "content-type": params.response.mimeType,
+                "location": ""
             };
 
             if (head['content-type'] == 'application/octet-stream') {
@@ -108,7 +108,7 @@ CDP({port:port}, client => {
 
     Page.loadEventFired(() => {
         if (!head['status']) {
-            
+
             console.error(formatDateTime() + ' ' + 'no status code return! ' + url);
             client.close();
             process.exitCode = 1;
@@ -119,10 +119,10 @@ CDP({port:port}, client => {
         console.log(head['location']);
 
         if (head['content-type'].indexOf('html') > -1) {
-              Runtime.evaluate({expression: 'document.documentElement.outerHTML'}).then(result => {
-                  console.log(result.result.value);
-                  client.close();
-             });
+            Runtime.evaluate({expression: 'document.documentElement.outerHTML'}).then(result => {
+                console.log(result.result.value);
+                client.close();
+            });
         } else {
             // safe enough to fetch response body
             Network.getResponseBody({requestId: requestId}, (err, response) => {
