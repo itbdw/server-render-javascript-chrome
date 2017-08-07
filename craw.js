@@ -12,7 +12,6 @@ var url='https://itbdw.com';
 
 var ua = '';
 var port = 9222;
-var blocked_pattens = ["*.mp4", "*.webm"];
 var requestId = '';
 
 url = args[2] ? args[2] : url;
@@ -29,15 +28,40 @@ userAgent = ua + ' ' + 'ServerRenderJavascript';
 
 var head = {};
 
-CDP({port:port}, function(client) {
+function formatDateTime(inputTime) {
+    if (inputTime) {
+        var date = new Date(inputTime);
+    } else {
+        var date = new Date();
+    }
+
+    var y = date.getFullYear();
+    var m = date.getMonth() + 1;
+    m = m < 10 ? ('0' + m) : m;
+    var d = date.getDate();
+    d = d < 10 ? ('0' + d) : d;
+    var h = date.getHours();
+    h = h < 10 ? ('0' + h) : h;
+    var minute = date.getMinutes();
+    var second = date.getSeconds();
+    var ms = date.getMilliseconds();
+    minute = minute < 10 ? ('0' + minute) : minute;
+    second = second < 10 ? ('0' + second) : second;
+
+    return y + '-' + m + '-' + d+' '+h+':'+minute+':'+second+'.'+ms;
+};
+
+CDP({port:port}, client => {
     // extract domains
     const {Network, Page, Runtime, DOM} = client;
 
     Network.setUserAgentOverride({userAgent:userAgent});
-    Network.setBlockedURLs({urls: blocked_pattens});
+
+    //does not support Network.setBlockedURLs() for process just hanging out there,
+    // seems there is no method for listen it
 
     // setup handlers
-    Network.requestWillBeSent(function(params) {
+    Network.requestWillBeSent(params => {
         if (params.documentURL == url || params.documentURL == (url + '/')) {
 
             requestId = params.requestId;
@@ -63,7 +87,7 @@ CDP({port:port}, function(client) {
         }
     });
 
-    Network.responseReceived(function(params) {
+    Network.responseReceived((params) => {
 
         if (params.response.url == url || params.response.url == url + '/' ) {
             head = {
@@ -82,7 +106,7 @@ CDP({port:port}, function(client) {
 
     });
 
-    Page.loadEventFired(function() {
+    Page.loadEventFired(() => {
         if (!head['status']) {
             
             console.error(formatDateTime() + ' ' + 'no status code return! ' + url);
@@ -95,13 +119,13 @@ CDP({port:port}, function(client) {
         console.log(head['location']);
 
         if (head['content-type'].indexOf('html') > -1) {
-              Runtime.evaluate({expression: 'document.documentElement.outerHTML'}).then(function(result) {
+              Runtime.evaluate({expression: 'document.documentElement.outerHTML'}).then(result => {
                   console.log(result.result.value);
                   client.close();
              });
         } else {
             // safe enough to fetch response body
-            Network.getResponseBody({requestId: requestId}, function(err, response) {
+            Network.getResponseBody({requestId: requestId}, (err, response) => {
                 if (err) {
                     console.error(formatDateTime() + ' ' + 'failed fetch response body');
                     client.close();
@@ -119,10 +143,10 @@ CDP({port:port}, function(client) {
         }
     });
 
-    Network.responseReceived(function(params) {
+    Network.responseReceived((params) => {
         // console.log(params);
     });
-    Network.loadingFinished(function(params) {
+    Network.loadingFinished((params) => {
         // console.log(params);
     });
 
@@ -131,41 +155,17 @@ CDP({port:port}, function(client) {
         Network.enable(),
         Page.enable()
 
-    ]).then(function() {
+    ]).then(() => {
         return Page.navigate({url: url});
-    }).catch(function(err) {
+    }).catch((err) => {
         console.error(formatDateTime() + ' ' + err);
         client.close();
         process.exitCode = 1;
     });
 
-}).on('error', function(err) {
+}).on('error', (err) => {
     // cannot connect to the remote endpoint
     console.error(formatDateTime() + ' ' + err);
     process.exitCode = 2;
 });
-
-function formatDateTime(inputTime) {
-    if (inputTime) {
-        var date = new Date(inputTime);
-    } else {
-        var date = new Date();
-    }
-
-    var y = date.getFullYear();
-    var m = date.getMonth() + 1;
-    m = m < 10 ? ('0' + m) : m;
-    var d = date.getDate();
-    d = d < 10 ? ('0' + d) : d;
-    var h = date.getHours();
-    h = h < 10 ? ('0' + h) : h;
-    var minute = date.getMinutes();
-    var second = date.getSeconds();
-    var ms = date.getMilliseconds();
-    minute = minute < 10 ? ('0' + minute) : minute;
-    second = second < 10 ? ('0' + second) : second;
-
-    return y + '-' + m + '-' + d+' '+h+':'+minute+':'+second+'.'+ms;
-};
-
 

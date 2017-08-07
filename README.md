@@ -32,7 +32,6 @@ sudo apt-get install -y nodejs
 wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 dpkg -i google-chrome-stable_current_amd64.deb
 apt-get install -f
-ln -s /usr/bin/google-chrome-stable /usr/bin/chrome
 
 apt install libosmesa6
 ln -s /usr/lib/x86_64-linux-gnu/libOSMesa.so.6 /opt/google/chrome/libosmesa.so
@@ -50,8 +49,6 @@ structure looks like below
                     spider.js
 
 ```
-
-Any thing within craw.js and spider.js can be modified for your actual need.
 
 ```
 cd /var/server/spider
@@ -120,12 +117,6 @@ You can make a request and check your nginx access log if anything works great.
 You should get two line in nginx access log, one is your request with user-agent `fake Googlebot by server-render-javascript` and one made by
 your upstream server with user-agent `ServerRenderJavascript`, if you have not change the default user-agent at craw.js.
 
-
-## Todo
-
-* before call craw.js, make sure chrome was started already (no pending)
-
-* bug, when the documentUrl was blocked by rule, it just hang out there, specify a timeout
 
 ## What and how it works
 
