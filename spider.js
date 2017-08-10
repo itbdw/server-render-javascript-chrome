@@ -5,6 +5,9 @@ var chrome_launcher = require('chrome-launcher');
 
 var app = express();
 
+//设置打开网页的整个超时时间
+var totalTimeout = 10000;//ms
+
 function formatDateTime(inputTime) {
     if (inputTime) {
         var date = new Date(inputTime);
@@ -62,6 +65,11 @@ app.get('/*', function (req, res) {
 
         var craw = child_process.spawn('node', ['craw.js', url, ua, chrome.port]);
 
+        //设置进程超时
+        setTimeout(function () {
+            craw.kill()
+        }, totalTimeout);
+
         craw.stdout.setEncoding('utf8');
 
         craw.stdout.on('data', function (data) {
@@ -98,7 +106,7 @@ app.get('/*', function (req, res) {
                     res.statusCode = 403;
                     res.send(content ? content : '禁止访问');
                     break;
-                default:
+                case 0:
 
                     var content_split = content.split("\n");
 
@@ -139,6 +147,12 @@ app.get('/*', function (req, res) {
                     content = content_split.join("\n");
 
                     res.send(content);
+                    break;
+
+                default:
+                    console.log(formatDateTime() + ' ' + '访问超时: ' + url);
+                    res.statusCode = 504;
+                    res.send(content ? content : '访问超时 ' + url);
                     break;
             }
         });
