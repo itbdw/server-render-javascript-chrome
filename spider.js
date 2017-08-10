@@ -8,6 +8,24 @@ var app = express();
 //设置打开网页的整个超时时间
 var totalTimeout = 10000;//ms
 
+/**
+ * Launches a debugging instance of Chrome.
+ * @param {boolean=} headless True (default) launches Chrome in headless mode.
+ *     False launches a full version of Chrome.
+ * @return {Promise<ChromeLauncher>}
+ */
+function launchChrome(headless = true) {
+    return chrome_launcher.launch({
+        // port: 9222,// just use a random port
+        chromeFlags: [
+            headless ? '--headless' : '',
+            '--window-size=1024,768',//may be should vary with device type
+            '--disable-gpu',
+            '--blink-settings=imagesEnabled=false'
+        ]
+    });
+}
+
 function formatDateTime(inputTime) {
     if (inputTime) {
         var date = new Date(inputTime);
@@ -41,23 +59,7 @@ app.get('/*', function (req, res) {
 
     var content = '';
 
-    /**
-     * Launches a debugging instance of Chrome.
-     * @param {boolean=} headless True (default) launches Chrome in headless mode.
-     *     False launches a full version of Chrome.
-     * @return {Promise<ChromeLauncher>}
-     */
-    function launchChrome(headless = true) {
-        return chrome_launcher.launch({
-            // port: 9222,// just use a random port
-            chromeFlags: [
-                headless ? '--headless' : '',
-                '--window-size=1024,768',//may be should vary with device type
-                '--disable-gpu',
-                '--blink-settings=imagesEnabled=false'
-            ]
-        });
-    }
+    console.log(formatDateTime() + ' ' + 'start deal request ' + url);
 
     launchChrome().then((chrome) => {
 
