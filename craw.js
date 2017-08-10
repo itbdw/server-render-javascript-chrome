@@ -28,29 +28,6 @@ userAgent = ua + ' ' + 'ServerRenderJavascript';
 
 var head = {};
 
-function formatDateTime(inputTime) {
-    if (inputTime) {
-        var date = new Date(inputTime);
-    } else {
-        var date = new Date();
-    }
-
-    var y = date.getFullYear();
-    var m = date.getMonth() + 1;
-    m = m < 10 ? ('0' + m) : m;
-    var d = date.getDate();
-    d = d < 10 ? ('0' + d) : d;
-    var h = date.getHours();
-    h = h < 10 ? ('0' + h) : h;
-    var minute = date.getMinutes();
-    var second = date.getSeconds();
-    var ms = date.getMilliseconds();
-    minute = minute < 10 ? ('0' + minute) : minute;
-    second = second < 10 ? ('0' + second) : second;
-
-    return y + '-' + m + '-' + d + ' ' + h + ':' + minute + ':' + second + '.' + ms;
-};
-
 CDP({port: port}, client => {
     // extract domains
     const {Network, Page, Runtime, DOM} = client;
@@ -109,7 +86,7 @@ CDP({port: port}, client => {
     Page.loadEventFired(() => {
         if (!head['status']) {
 
-            console.error(formatDateTime() + ' ' + 'no status code return! ' + url);
+            console.error('no status code return! ' + url);
             client.close();
             process.exitCode = 1;
         }
@@ -127,7 +104,7 @@ CDP({port: port}, client => {
             // safe enough to fetch response body
             Network.getResponseBody({requestId: requestId}, (err, response) => {
                 if (err) {
-                    console.error(formatDateTime() + ' ' + 'failed fetch response body');
+                    console.error('failed fetch response body');
                     client.close();
                     process.exitCode = 1;
                 } else {
@@ -144,10 +121,19 @@ CDP({port: port}, client => {
     });
 
     Network.responseReceived((params) => {
-        // console.log(params);
+        // console.error('received data ' + params.response.url);
     });
     Network.loadingFinished((params) => {
-        // console.log(params);
+        if (params.encodedDataLength == 0) {
+            // console.error('request from local');
+        } else {
+            // console.error('request from network');
+        }
+    });
+
+    // Network.
+    Network.requestServedFromCache((params) => {
+        // console.error('load from cache ', params);
     });
 
     // enable events then start!
@@ -158,14 +144,14 @@ CDP({port: port}, client => {
     ]).then(() => {
         return Page.navigate({url: url});
     }).catch((err) => {
-        console.error(formatDateTime() + ' ' + err);
+        console.error(err);
         client.close();
         process.exitCode = 1;
     });
 
 }).on('error', (err) => {
     // cannot connect to the remote endpoint
-    console.error(formatDateTime() + ' ' + err);
+    console.error(err);
     process.exitCode = 2;
 });
 

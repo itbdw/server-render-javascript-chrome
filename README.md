@@ -54,6 +54,7 @@ structure looks like below
 cd /var/server/spider
 npm install
 
+npm install pm2 -g 
 PORT=3000 pm2 -f start spider.js
 ```
 

@@ -5,8 +5,98 @@ var chrome_launcher = require('chrome-launcher');
 
 var app = express();
 
-//设置打开网页的整个超时时间
+//设置一次请求的超时时间
 var totalTimeout = 10000;//ms
+
+//设置 chrome 进程数
+var chromeInstanceCount = 2;//注意提前计算好每个 chrome 进程的内存占用情况
+
+
+var chromePools = {}; // {"chrome":chrome, "status":"free"}
+
+initInstance();
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Launches a debugging instance of Chrome.
+ * @param {boolean=} headless True (default) launches Chrome in headless mode.
+ *     False launches a full version of Chrome.
+ * @return {Promise<ChromeLauncher>}
+ */
+function launchChrome(headless = true) {
+    return chrome_launcher.launch({
+        // port: 9222,// just use a random port
+        chromeFlags: [
+            headless ? '--headless' : '',
+            '--window-size=1024,768',//may be should vary with device type
+            '--disable-gpu',
+            '--blink-settings=imagesEnabled=false'
+        ]
+    });
+}
+
+function initInstance() {
+    for (var x = 0; x < chromeInstanceCount; x++) {
+        createChromeInstance();
+    }
+}
+
+function addInstance(instance) {
+    chromePools["port" + instance.port] = instance;
+}
+
+function freeInstance(instance) {
+    chromePools["port" + instance.port]["status"] = "free";
+}
+
+function useInstance(instance) {
+    chromePools["port" + instance.port]["status"] = "used";
+}
+
+function createChromeInstance() {
+    var instance = {};
+
+    console.log("try create a new chrome instance");
+    launchChrome().then((chrome) => {
+
+        instance = {
+            "chrome": chrome,
+            "status": "free",
+        };
+
+        addInstance(instance);
+
+        console.log(formatDateTime() + ' ' + 'start chrome instance with port:' + chrome.port);
+    }).catch((error) => {
+        console.error(formatDateTime() + ' ' + 'chrome error: ', error);
+    });
+
+    return instance;
+}
+
+function getValidInstance(i = 0) {
+    var instance = {};
+
+    for (x in chromePools) {
+        if (chromePools[x].status == "free") {
+            instance = chromePools[x];
+
+            useInstance(instance);
+            break;
+        }
+    }
+
+    //小心死循环
+    if (!instance.status) {
+        sleep(100);
+        return getValidInstance(i);
+    }
+
+    return instance;
+}
 
 function formatDateTime(inputTime) {
     if (inputTime) {
@@ -41,29 +131,16 @@ app.get('/*', function (req, res) {
 
     var content = '';
 
-    /**
-     * Launches a debugging instance of Chrome.
-     * @param {boolean=} headless True (default) launches Chrome in headless mode.
-     *     False launches a full version of Chrome.
-     * @return {Promise<ChromeLauncher>}
-     */
-    function launchChrome(headless = true) {
-        return chrome_launcher.launch({
-            // port: 9222,// just use a random port
-            chromeFlags: [
-                headless ? '--headless' : '',
-                '--window-size=1024,768',//may be should vary with device type
-                '--disable-gpu',
-                '--blink-settings=imagesEnabled=false'
-            ]
-        });
-    }
+    console.log(formatDateTime() + ' ' + 'start deal request ' + url);
 
-    launchChrome().then((chrome) => {
+    //sync
+    instance = getValidInstance();
 
-        console.log(formatDateTime() + ' ' + 'start chrome instance with port:' + chrome.port);
+    if (instance) {
 
-        var craw = child_process.spawn('node', ['craw.js', url, ua, chrome.port]);
+        console.log(formatDateTime() + ' ' + 'choose chrome instance with port:' + instance.chrome.port + ' ' + url);
+
+        var craw = child_process.spawn('node', ['craw.js', url, ua, instance.chrome.port]);
 
         //设置进程超时
         setTimeout(function () {
@@ -85,10 +162,12 @@ app.get('/*', function (req, res) {
                 console.log(formatDateTime() + ' ' + `craw process exited with code ${code}`);
             }
         });
+
         craw.on('exit', function (code) {
 
-            chrome.kill();
-            console.log(formatDateTime() + ' ' + 'kill chrome instance normally with port:' + chrome.port);
+            freeInstance(instance);
+
+            console.log(formatDateTime() + ' ' + 'free chrome instance with port:' + instance.chrome.port + ' ' + url);
 
             switch (code) {
                 case 1:
@@ -156,9 +235,11 @@ app.get('/*', function (req, res) {
                     break;
             }
         });
-    }).catch((error) => {
-        console.error(formatDateTime() + ' ' + 'chrome error: ' + url + " ", error);
-    });
+    } else {
+        console.log(formatDateTime() + ' ' + '服务器没有空闲 chrome 进程: ' + url);
+        res.statusCode = 504;
+        res.send(content ? content : '访问超时 ' + url);
+    }
 });
 
 //     need res.send on error
