@@ -52,8 +52,8 @@ function addInstance(instance) {
 function delInstance(instance) {
     console.log(formatDateTime() + ' ' + 'delete chrome instance with port:' + instance.chrome.port + " after maxRequestCount:" + maxRequestCount);
 
-    instance.chrome.kill();
     delete chromePools["port" + instance.chrome.port];
+    instance.chrome.kill();
 }
 
 function freeInstance(instance) {
