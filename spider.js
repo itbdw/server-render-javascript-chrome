@@ -6,11 +6,12 @@ var chrome_launcher = require('chrome-launcher');
 var app = express();
 
 //设置一次请求的超时时间
-var totalTimeout = 10000;//ms
+var totalTimeout = 5000;//ms
 
 //设置 chrome 进程数
-var chromeInstanceCount = 2;//注意提前计算好每个 chrome 进程的内存占用情况
+var chromeInstanceCount = 3;//注意提前计算好每个 chrome 进程最坏情况的内存占用情况，可能20次请求就涨到400M
 
+var maxRequestCount = 20;// chrome 进程执行超过这个数后即销毁，chrome 太吃内存
 
 var chromePools = {}; // {"chrome":chrome, "status":"free"}
 
@@ -48,23 +49,37 @@ function addInstance(instance) {
     chromePools["port" + instance.chrome.port] = instance;
 }
 
+function delInstance(instance) {
+    console.log(formatDateTime() + ' ' + 'delete chrome instance with port:' + instance.chrome.port + " after maxRequestCount:" + maxRequestCount);
+
+    instance.chrome.kill();
+    delete chromePools["port" + instance.chrome.port];
+}
+
 function freeInstance(instance) {
-    chromePools["port" + instance.chrome.port]["status"] = "free";
+    if (chromePools["port" + instance.chrome.port]["count"] >= maxRequestCount) {
+        createChromeInstance();
+        delInstance(instance);
+    } else {
+        chromePools["port" + instance.chrome.port]["status"] = "free";
+    }
 }
 
 function useInstance(instance) {
     chromePools["port" + instance.chrome.port]["status"] = "used";
+    chromePools["port" + instance.chrome.port]["count"]++;
 }
 
 function createChromeInstance() {
     var instance = {};
 
-    console.log("try create a new chrome instance");
+    console.log(formatDateTime() + " try create a new chrome instance");
     launchChrome().then((chrome) => {
 
         instance = {
             "chrome": chrome,
             "status": "free",
+            "count": 0,
         };
 
         addInstance(instance);
@@ -111,7 +126,7 @@ function getValidInstance(i = 0) {
 
     //小心死循环
     if (!instance.status) {
-        sleep(200);
+        sleep(500);
         return getValidInstance(i);
     }
 
@@ -151,7 +166,7 @@ app.get('/*', function (req, res) {
 
     var content = '';
 
-    console.log(formatDateTime() + ' ' + 'start deal request ' + url);
+    console.log(formatDateTime() + ' ' + 'deal request ' + url);
 
     //sync
     instance = getValidInstance();
