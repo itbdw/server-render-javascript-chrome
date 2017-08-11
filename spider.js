@@ -45,15 +45,15 @@ function initInstance() {
 }
 
 function addInstance(instance) {
-    chromePools["port" + instance.port] = instance;
+    chromePools["port" + instance.chrome.port] = instance;
 }
 
 function freeInstance(instance) {
-    chromePools["port" + instance.port]["status"] = "free";
+    chromePools["port" + instance.chrome.port]["status"] = "free";
 }
 
 function useInstance(instance) {
-    chromePools["port" + instance.port]["status"] = "used";
+    chromePools["port" + instance.chrome.port]["status"] = "used";
 }
 
 function createChromeInstance() {
@@ -77,12 +77,32 @@ function createChromeInstance() {
     return instance;
 }
 
+/**
+ * Randomize array element order in-place.
+ * Using Durstenfeld shuffle algorithm.
+ *
+ * @link https://stackoverflow.com/a/12646864/5049871
+ */
+function shuffleArray(array) {
+    for (var i = array.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
+    }
+    return array;
+}
+
 function getValidInstance(i = 0) {
     var instance = {};
 
-    for (x in chromePools) {
-        if (chromePools[x].status == "free") {
-            instance = chromePools[x];
+    var poolKeys = Object.keys(chromePools);
+
+    poolKeys = shuffleArray(poolKeys);
+
+    for (x in poolKeys) {
+        if (chromePools[poolKeys[x]].status == "free") {
+            instance = chromePools[poolKeys[x]];
 
             useInstance(instance);
             break;
@@ -91,7 +111,7 @@ function getValidInstance(i = 0) {
 
     //小心死循环
     if (!instance.status) {
-        sleep(100);
+        sleep(200);
         return getValidInstance(i);
     }
 
