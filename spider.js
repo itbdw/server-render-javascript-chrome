@@ -61,11 +61,13 @@ function delInstance(instance) {
 }
 
 function freeInstance(instance) {
-    if (chromePools["port" + instance.chrome.port]["count"] >= maxRequestCount) {
-        createChromeInstance();
-        delInstance(instance);
-    } else {
-        chromePools["port" + instance.chrome.port]["status"] = "free";
+    if (instance) {
+        if (chromePools["port" + instance.chrome.port]["count"] >= maxRequestCount) {
+            createChromeInstance();
+            delInstance(instance);
+        } else {
+            chromePools["port" + instance.chrome.port]["status"] = "free";
+        }
     }
 }
 
