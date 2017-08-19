@@ -5,11 +5,14 @@ var chrome_launcher = require('chrome-launcher');
 
 var app = express();
 
-//设置一次请求的超时时间
-var totalTimeout = 5000;//ms
+//请求超时时间 = sleep_ms * loop_count + totalTimeout
+
+var totalTimeout = 5000;//ms //设置开始处理请求后的超时时间
+var sleep_ms = 10;//ms 没有空闲进程的等待下次查询时间的毫秒数
+var loop_count = 200; //循环查几次直到放弃
 
 //设置 chrome 进程数
-var chromeInstanceCount = 3;//注意提前计算好每个 chrome 进程最坏情况的内存占用情况，可能20次请求就涨到400M
+var chromeInstanceCount = 4;//注意提前计算好每个 chrome 进程最坏情况的内存占用情况，可能20次请求就涨到400M
 
 var maxRequestCount = 20;// chrome 进程执行超过这个数后即销毁，chrome 太吃内存
 
@@ -17,8 +20,9 @@ var chromePools = {}; // {"chrome":chrome, "status":"free"}
 
 initInstance();
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+//虽然很浪费 cpu，暂时没有更好的方法来解决
+function sleep(d){
+    for(var t = Date.now();Date.now() - t <= d;);
 }
 
 /**
@@ -109,6 +113,11 @@ function shuffleArray(array) {
 }
 
 function getValidInstance(i = 0) {
+
+    if (i >= loop_count) {
+        return null;
+    }
+
     var instance = {};
 
     var poolKeys = Object.keys(chromePools);
@@ -126,8 +135,8 @@ function getValidInstance(i = 0) {
 
     //小心死循环
     if (!instance.status) {
-        sleep(500);
-        return getValidInstance(i);
+        sleep(sleep_ms);
+        return getValidInstance(++i);
     }
 
     return instance;
