@@ -44,7 +44,7 @@ function launchChrome(headless = true) {
 }
 
 function initInstance() {
-    for (var x = 0; x < chromeInstanceCount; x++) {
+    for (var x = 0; x <= chromeInstanceCount; x++) {
         createChromeInstance();
     }
 }
