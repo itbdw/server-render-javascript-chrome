@@ -189,7 +189,7 @@ function formatDateTime(req_id='') {
     minute = minute < 10 ? ('0' + minute) : minute;
     second = second < 10 ? ('0' + second) : second;
 
-    return y + '-' + m + '-' + d + ' ' + h + ':' + minute + ':' + second + '.' + ms + ' ' + req_id + ' ';
+    return y + '-' + m + '-' + d + ' ' + h + ':' + minute + ':' + second + '.' + ms + ' ' + req_id;
 };
 
 function getRequestId() {
