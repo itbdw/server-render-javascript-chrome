@@ -65,6 +65,9 @@ function delInstance(instance, request_id) {
 
 function freeInstance(instance, request_id) {
     if (instance && chromePools["port" + instance.chrome.port]) {
+
+        console.log(formatDateTime(request_id) + ' ' + 'free chrome instance with port:' + instance.chrome.port);
+
         // console.log(formatDateTime(request_id) + ' ' + 'success-instance-1', instance, chromePools);
 
         if (chromePools["port" + instance.chrome.port]["count"] >= maxRequestCount) {
@@ -77,6 +80,9 @@ function freeInstance(instance, request_id) {
         // console.log(formatDateTime(request_id) + ' ' + 'success-instance-2', instance, chromePools);
 
     } else {
+
+        console.log(formatDateTime(request_id) + ' ' + 'free chrome instance with port:null');
+
 
         //todo 临时解决了问题，其实需要解决为什么 instance 变成了 null
         for (x in chromePools) {
@@ -215,7 +221,7 @@ app.get('/*', function (req, res) {
 
     var url = req.protocol + '://' + req.hostname + req.originalUrl;
 
-    request_id = request_id + url;
+    request_id = request_id + ' ' + url;
 
     var ua = base64.encode(req.headers['user-agent']);
 
@@ -228,7 +234,7 @@ app.get('/*', function (req, res) {
 
     if (instance) {
 
-        console.log(formatDateTime(request_id) + ' ' + 'choose chrome instance with port:' + instance.chrome.port + ' ' + url);
+        console.log(formatDateTime(request_id) + ' ' + 'choose chrome instance with port:' + instance.chrome.port);
 
         var craw = child_process.spawn('node', ['craw.js', url, ua, instance.chrome.port]);
 
