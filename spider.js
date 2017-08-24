@@ -6,7 +6,9 @@ var chrome_launcher = require('chrome-launcher');
 var app = express();
 
 var request_id = 'init';
-//客户端连接异常断开后，没有捕获状态
+//fixme 客户端连接异常断开后，没有捕获
+
+var url = '';
 
 //请求超时时间 = sleep_ms * loop_count + totalTimeout
 
@@ -14,8 +16,12 @@ var totalTimeout = 5000;//ms //设置开始处理请求后的超时时间
 var sleep_ms = 100;//ms 没有空闲进程的等待下次查询时间的毫秒数
 var loop_count = 20; //循环查几次直到放弃
 
+
+var instanceType = 'dynamic';// 进程数静态还是动态调整，static dynamic
+
 //设置 chrome 进程数
 var chromeInstanceCount = 3;//注意提前计算好每个 chrome 进程最坏情况的内存占用情况，可能20次请求就涨到400M
+var maxChromeInstanceCount = 4;//最大数量，注意，这个值会被突破，仅当 static 情况下有意义
 
 var maxRequestCount = 20;// chrome 进程执行超过这个数后即销毁，chrome 太吃内存
 
@@ -57,51 +63,44 @@ function addInstance(instance) {
 }
 
 function delInstance(instance, request_id) {
-    console.log(formatDateTime(request_id) + ' ' + 'delete chrome instance with port:' + instance.chrome.port + " after maxRequestCount:" + maxRequestCount);
+    console.log(formatDateTime(request_id) + ' ' + 'delete chrome instance start with port:' + instance.chrome.port + " after maxRequestCount:" + maxRequestCount);
+    delete chromePools["port" + instance.chrome.port];
 
     instance.chrome.kill();
-    delete chromePools["port" + instance.chrome.port];
+    console.log(formatDateTime(request_id) + ' ' + 'delete chrome instance done with port:' + instance.chrome.port + " after maxRequestCount:" + maxRequestCount);
 }
 
 function freeInstance(instance, request_id) {
-    if (instance && chromePools["port" + instance.chrome.port]) {
 
-        console.log(formatDateTime(request_id) + ' ' + 'free chrome instance with port:' + instance.chrome.port);
+    if (instance && instance.chrome && chromePools["port" + instance.chrome.port]) {
+        var enough = clearSpareInstance(instance);
 
-        // console.log(formatDateTime(request_id) + ' ' + 'success-instance-1', instance, chromePools);
+        console.log(formatDateTime(request_id) + ' ' + 'free chrome instance with port:' + instance.chrome.port, chromePools["port" + instance.chrome.port]["count"]);
 
         if (chromePools["port" + instance.chrome.port]["count"] >= maxRequestCount) {
+
+            if (!enough) {
+                createChromeInstance(request_id);
+            }
+
             delInstance(instance, request_id);
-            createChromeInstance(request_id);
         } else {
             chromePools["port" + instance.chrome.port]["status"] = "free";
         }
 
-        // console.log(formatDateTime(request_id) + ' ' + 'success-instance-2', instance, chromePools);
-
     } else {
-
-        console.log(formatDateTime(request_id) + ' ' + 'free chrome instance with port:null');
-
-
-        //todo 临时解决了问题，其实需要解决为什么 instance 变成了 null
-        for (x in chromePools) {
-            chromePools[x]['status'] = "free";
-        }
-
-        // console.log(formatDateTime(request_id) + ' ' + 'error-instance', instance, chromePools);
+        console.log(formatDateTime(request_id) + ' ' + 'free chrome instance with port:null failed');
     }
 }
+
 
 function useInstance(instance, request_id) {
     chromePools["port" + instance.chrome.port]["status"] = "used";
     chromePools["port" + instance.chrome.port]["count"]++;
-
-    // console.log(formatDateTime(request_id) + ' ' + 'use-instance', instance);
 }
 
 function createChromeInstance(request_id) {
-    var instance = {};
+    var instance;
 
     console.log(formatDateTime(request_id) + " try create a new chrome instance");
     launchChrome().then((chrome) => {
@@ -116,7 +115,7 @@ function createChromeInstance(request_id) {
 
         console.log(formatDateTime(request_id) + ' ' + 'start chrome instance with port:' + chrome.port);
     }).catch((error) => {
-        console.error(formatDateTime(request_id) + ' ' + 'chrome error: ', error);
+        console.error(formatDateTime(request_id) + ' ' + 'start chrome failed: ', error);
     });
 
     return instance;
@@ -138,12 +137,14 @@ function shuffleArray(array) {
     return array;
 }
 
+// 必须要声明 var 内部变量，否则会被别的请求使用，导致错误的释放进程池
 function getValidInstance(request_id) {
+    var instance;
 
-    for (i=0; i <= loop_count; i++) {
-        instance = getValidInstanceReal(request_id);
+    for (var i=0; i <= loop_count; i++) {
+        instance = getValidInstanceReal(request_id, i);
 
-        if (instance.status) {
+        if (instance && instance.status) {
             return instance;
         }
 
@@ -153,24 +154,59 @@ function getValidInstance(request_id) {
     return null;
 }
 
-function getValidInstanceReal(request_id) {
+function getValidInstanceReal(request_id, i) {
 
-    var instance = {};
-
+    var instance;
     var poolKeys = Object.keys(chromePools);
 
     poolKeys = shuffleArray(poolKeys);
 
-    for (x in poolKeys) {
+    for (var x in poolKeys) {
         if (chromePools[poolKeys[x]].status == "free") {
             instance = chromePools[poolKeys[x]];
-
             useInstance(instance, request_id);
             break;
+        } else {
+            // console.log(request_id, poolKeys[x], 'used')
         }
     }
 
+    if (instanceType == 'dynamic' && i == 1 && !instance && poolKeys.length < maxChromeInstanceCount) {
+        createChromeInstance(request_id);
+    }
+
     return instance;
+}
+
+function clearSpareInstance() {
+    var enough = false;
+
+    if (instanceType != 'dynamic') {
+        return enough;
+    }
+
+    var instance;
+    var poolKeys = Object.keys(chromePools);
+
+    if (poolKeys.length > chromeInstanceCount) {
+        var should_delete_count = maxChromeInstanceCount - chromeInstanceCount;
+        var delete_count = 0;
+        enough = true;
+
+        for (var x in poolKeys) {
+            if (chromePools[poolKeys[x]].status == "free" && chromePools[poolKeys[x]].count > maxRequestCount
+            ) {
+                instance = chromePools[poolKeys[x]];
+                delInstance(instance, request_id);
+
+                delete_count++;
+                if (delete_count === should_delete_count) {
+                    break;
+                }
+            }
+        }
+    }
+    return enough;
 }
 
 function formatDateTime(req_id='') {
@@ -193,33 +229,15 @@ function formatDateTime(req_id='') {
 };
 
 function getRequestId() {
-
-    var date = new Date();
-
-    var y = date.getFullYear();
-    var m = date.getMonth() + 1;
-    m = m < 10 ? ('0' + m) : m;
-    var d = date.getDate();
-    d = d < 10 ? ('0' + d) : d;
-    var h = date.getHours();
-    h = h < 10 ? ('0' + h) : h;
-    var minute = date.getMinutes();
-    var second = date.getSeconds();
-    var ms = date.getMilliseconds();
-    minute = minute < 10 ? ('0' + minute) : minute;
-    second = second < 10 ? ('0' + second) : second;
-
-    return y + '-' + m + '-' + d + '-' + h + ':' + minute + ':' + second + '.' + ms;
+    return (new Date().getTime()).toString(16);
 }
 
 app.enable('trust proxy');
 
-
 app.get('/*', function (req, res) {
 
-    var request_id = getRequestId();
-
-    var url = req.protocol + '://' + req.hostname + req.originalUrl;
+    request_id = getRequestId();
+    url = req.protocol + '://' + req.hostname + req.originalUrl;
 
     request_id = request_id + ' ' + url;
 
@@ -229,10 +247,9 @@ app.get('/*', function (req, res) {
 
     console.log(formatDateTime(request_id) + ' ' + 'deal request ' + url);
 
-    //sync
-    instance = getValidInstance(request_id);
+    var instance = getValidInstance(request_id);
 
-    if (instance) {
+    if (instance && instance.chrome) {
 
         console.log(formatDateTime(request_id) + ' ' + 'choose chrome instance with port:' + instance.chrome.port);
 
@@ -337,7 +354,6 @@ app.get('/*', function (req, res) {
 });
 
 //     need res.send on error
-
 process.on("uncaughtException", function (err) {
     console.error(formatDateTime(request_id) + ' ' + 'Spider error caught in uncaughtException event:', err);
 })
