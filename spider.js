@@ -17,11 +17,11 @@ var sleep_ms = 100;//ms 没有空闲进程的等待下次查询时间的毫秒�
 var loop_count = 20; //循环查几次直到放弃
 
 
-var instanceType = 'dynamic';// 进程数静态还是动态调整，static dynamic
+var instanceType = 'static';// 进程数静态还是动态调整，static dynamic
 
 //设置 chrome 进程数
 var chromeInstanceCount = 3;//注意提前计算好每个 chrome 进程最坏情况的内存占用情况，可能20次请求就涨到400M
-var maxChromeInstanceCount = 4;//最大数量，注意，这个值会被突破，仅当 static 情况下有意义
+var maxChromeInstanceCount = 4;//最大数量，注意，这个值会被突破，仅当 instanceType 为 dynamic 情况下才生效
 
 var maxRequestCount = 20;// chrome 进程执行超过这个数后即销毁，chrome 太吃内存
 
