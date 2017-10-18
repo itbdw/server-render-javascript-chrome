@@ -96,6 +96,7 @@ CDP({port: port}, client => {
         console.log(head['location']);
 
         if (head['content-type'].indexOf('html') > -1) {
+            console.log("<!DOCTYPE html>");
             Runtime.evaluate({expression: 'document.documentElement.outerHTML'}).then(result => {
                 console.log(result.result.value);
                 client.close();

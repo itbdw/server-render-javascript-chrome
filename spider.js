@@ -20,7 +20,7 @@ var loop_count = 20; //循环查几次直到放弃
 var instanceType = 'static';// 进程数静态还是动态调整，static dynamic
 
 //设置 chrome 进程数
-var chromeInstanceCount = 3;//注意提前计算好每个 chrome 进程最坏情况的内存占用情况，可能20次请求就涨到400M
+var chromeInstanceCount = 4;//注意提前计算好每个 chrome 进程最坏情况的内存占用情况，可能20次请求就涨到400M
 var maxChromeInstanceCount = 4;//最大数量，注意，这个值会被突破，仅当 instanceType 为 dynamic 情况下才生效
 
 var maxRequestCount = 20;// chrome 进程执行超过这个数后即销毁，chrome 太吃内存
@@ -45,9 +45,9 @@ function launchChrome(headless = true) {
         // port: 9222,// just use a random port
         chromeFlags: [
             headless ? '--headless' : '',
-            '--window-size=1024,768',//may be should vary with device type
+            '--window-size=1920,1080',//may be should vary with device type
             '--disable-gpu',
-            '--blink-settings=imagesEnabled=false'
+        //    '--blink-settings=imagesEnabled=false'
         ]
     });
 }
@@ -282,17 +282,17 @@ app.get('/*', function (req, res) {
 
             switch (code) {
                 case 1:
-                    console.log(formatDateTime(request_id) + ' ' + '加载失败: ' + url);
+                    console.log(formatDateTime(request_id) + ' ' + '1 加载失败: ' + url);
                     res.statusCode = 502;
                     res.send(content ? content : '加载失败');
                     break;
                 case 2:
-                    console.log(formatDateTime(request_id) + ' ' + '访问失败: ' + url);
+                    console.log(formatDateTime(request_id) + ' ' + '2 访问失败: ' + url);
                     res.statusCode = 503;
                     res.send(content ? content : '服务器内部错误');
                     break;
                 case 3:
-                    console.log(formatDateTime(request_id) + ' ' + '禁止访问: ' + url);
+                    console.log(formatDateTime(request_id) + ' ' + '3 禁止访问: ' + url);
                     res.statusCode = 403;
                     res.send(content ? content : '禁止访问');
                     break;
@@ -301,7 +301,7 @@ app.get('/*', function (req, res) {
                     var content_split = content.split("\n");
 
                     if (content_split[0] === '' || content_split[0] === undefined) {
-                        console.error(formatDateTime(request_id) + ' ' + '执行异常，没有获取到状态码: ' + url);
+                        onsole.error(formatDateTime(request_id) + ' ' + ' 0 执行异常，没有获取到状态码: ' + url);
                         res.statusCode = 503;
                         res.send(content);
                         return;
@@ -326,7 +326,7 @@ app.get('/*', function (req, res) {
                             return;
                         } catch (e) {
                             console.error(formatDateTime(request_id) + ' ' + e);
-                            console.log(formatDateTime(request_id) + ' ' + '加载失败: ' + url);
+                            console.log(formatDateTime(request_id) + ' ' + '0 加载失败: ' + url);
                             res.statusCode = 502;
                             res.header("Content-Type", "text/html");
                             res.send(content ? content : '加载失败');
