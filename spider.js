@@ -47,7 +47,7 @@ function launchChrome(headless = true) {
             headless ? '--headless' : '',
             '--window-size=1920,1080',//may be should vary with device type
             '--disable-gpu',
-        //    '--blink-settings=imagesEnabled=false'
+            '--blink-settings=imagesEnabled=false'
         ]
     });
 }
