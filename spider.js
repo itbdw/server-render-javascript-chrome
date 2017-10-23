@@ -301,7 +301,7 @@ app.get('/*', function (req, res) {
                     var content_split = content.split("\n");
 
                     if (content_split[0] === '' || content_split[0] === undefined) {
-                        onsole.error(formatDateTime(request_id) + ' ' + ' 0 执行异常，没有获取到状态码: ' + url);
+                        console.error(formatDateTime(request_id) + ' ' + ' 0 执行异常，没有获取到状态码: ' + url);
                         res.statusCode = 503;
                         res.send(content);
                         return;
